@@ -1,5 +1,6 @@
 package com.pw.smartselect;
 
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.ui.IStartup;
 
@@ -8,17 +9,12 @@ import org.eclipse.ui.IStartup;
  */
 public class SmartSelector implements IStartup {
 
-	private static boolean useSmartSelect = true;
-	public static final String USE_SMART_SELECT_PREF = "Use SmartSelect";
-	public static final String PREF_STORE_INITIALISED = "SmartSelect pref store initialised";
+	public static final String USE_SMART_SELECT = "Use SmartSelect";
+	public static final String USE_DELAYED_SELECTION = "Use delayed selection";
+	public static final boolean IS_SMART_SELECT_ENABLED_BY_DEFAULT = true;
+	public static final boolean IS_DELAYED_SELECTION_ENABLED_BY_DEFAULT = true;
 	
-	public static boolean useSmartSelect() {
-		return useSmartSelect;
-	}
-
 	@Override
 	public void earlyStartup() {
-		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
-		useSmartSelect = store.getBoolean(USE_SMART_SELECT_PREF);
 	}
 }

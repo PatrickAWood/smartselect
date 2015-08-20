@@ -1,6 +1,7 @@
 package com.pw.smartselect;
 
-import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.ui.IWindowListener;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchWindow;
@@ -22,7 +23,7 @@ public class Activator extends AbstractUIPlugin {
 	private static Activator plugin;
 	
 	public static final SmartSelectionListener SMART_SELECTION_LISTENER = new SmartSelectionListener();
-
+	
 	/**
 	 * The constructor
 	 */
@@ -36,8 +37,6 @@ public class Activator extends AbstractUIPlugin {
 	public void start(BundleContext context) throws Exception {
 		super.start(context);
 		plugin = this;
-		IPreferenceStore store = getPreferenceStore();
-		store.setDefault(SmartSelector.USE_SMART_SELECT_PREF, SmartSelector.useSmartSelect());
 		if (smartSelectEnabled()) {
 			IWindowListener listener = new IWindowListener() {
 	
@@ -116,8 +115,9 @@ public class Activator extends AbstractUIPlugin {
 			};*/
 	        workbench.getDisplay().asyncExec(new Runnable() {
 	            public void run() {
-	                for (IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
-	                	window.getSelectionService().addPostSelectionListener(SMART_SELECTION_LISTENER);
+	            	addListener();
+//	                for (IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
+//	                	window.getSelectionService().addPostSelectionListener(SMART_SELECTION_LISTENER);
 	/*                	window.getPartService().addPartListener(pl2);
 	            		// ITextEditor editor;
 	            		((StyledText)workbench.getActiveWorkbenchWindow().getActivePage().getActiveEditor().getAdapter(org.eclipse.swt.widgets.Control.class)).addKeyListener(new KeyListener() {
@@ -134,21 +134,15 @@ public class Activator extends AbstractUIPlugin {
 	            		});*/
 	//                	window.getSelectionService().addSelectionListener("org.eclipse.ui.DefaultTextEditor", smartSelectionListener);
 	//                	window.getSelectionService().addSelectionListener("org.eclipse.jdt.ui.CompilationUnitEditor", smartSelectionListener);
-	                }
+//	                }
 	            }
 	        });
 		}
 	}
 
 	private boolean smartSelectEnabled() {
-		boolean smartSelectEnabled = false;
-		IPreferenceStore store = getPreferenceStore();
-		if ("true".equals(store.getString(SmartSelector.PREF_STORE_INITIALISED))) {
-			smartSelectEnabled = store.getBoolean(SmartSelector.USE_SMART_SELECT_PREF);
-		} else {
-			smartSelectEnabled = store.getDefaultBoolean(SmartSelector.USE_SMART_SELECT_PREF);
-		}
-		return smartSelectEnabled;
+		IEclipsePreferences store = getEclipsePreferenceStore();
+		return store.getBoolean(SmartSelector.USE_SMART_SELECT, SmartSelector.IS_SMART_SELECT_ENABLED_BY_DEFAULT);
 	}
 
 	/*
@@ -160,6 +154,10 @@ public class Activator extends AbstractUIPlugin {
 		super.stop(context);
 	}
 
+	public IEclipsePreferences getEclipsePreferenceStore() {
+		return InstanceScope.INSTANCE.getNode(PLUGIN_ID);
+	}
+	
 	/**
 	 * Returns the shared instance
 	 *
@@ -167,5 +165,26 @@ public class Activator extends AbstractUIPlugin {
 	 */
 	public static Activator getDefault() {
 		return plugin;
+	}
+	
+	public void addListener() {
+		removeListener();
+		final IWorkbench workbench = PlatformUI.getWorkbench();
+		IEclipsePreferences store = getEclipsePreferenceStore();
+		for (IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
+        	if (store.getBoolean(SmartSelector.USE_DELAYED_SELECTION, SmartSelector.IS_DELAYED_SELECTION_ENABLED_BY_DEFAULT)) {
+        		window.getSelectionService().addPostSelectionListener(SMART_SELECTION_LISTENER);
+        	} else {
+        		window.getSelectionService().addSelectionListener(SMART_SELECTION_LISTENER);
+        	}
+        }
+	}
+
+	public void removeListener() {
+		final IWorkbench workbench = PlatformUI.getWorkbench();
+        for (IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
+        	window.getSelectionService().removeSelectionListener(SMART_SELECTION_LISTENER);
+        	window.getSelectionService().removePostSelectionListener(SMART_SELECTION_LISTENER);
+        }
 	}
 }

@@ -6,7 +6,7 @@
 	</extension>
 
    <extension point="org.eclipse.ui.preferencePages">
-      <page name="%Pref-Page-Name"
+      <page name="%Pref-Page-Name-1"
             class="com.pw.smartselect.preferences.SmartSelectPrefs"
             id="com.pw.smartselect.preferences.smartselectprefs">
       </page>

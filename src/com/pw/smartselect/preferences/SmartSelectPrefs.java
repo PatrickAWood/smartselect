@@ -5,32 +5,37 @@ package com.pw.smartselect.preferences;
 
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferencePage;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
-import org.eclipse.ui.IWorkbenchWindow;
-import org.eclipse.ui.PlatformUI;
 import org.osgi.service.prefs.BackingStoreException;
 
 import com.pw.smartselect.Activator;
 import com.pw.smartselect.SmartSelector;
+import com.pw.smartselect.util.MessageUtil;
 
 /**
  * @author Patrick.Wood
  *
  */
-public class SmartSelectPrefs extends PreferencePage implements IWorkbenchPreferencePage {
+public class SmartSelectPrefs extends PreferencePage implements IWorkbenchPreferencePage, SelectionListener {
 
 	private Button smartSelectEnabledCheckBox;
-	
+	private Button delayedSelectionRadioButton;
+	private Button realTimeSelectionRadioButton;
+
     /**
      * Creates a new checkbox instance and sets the default layout data.
      *
@@ -41,6 +46,7 @@ public class SmartSelectPrefs extends PreferencePage implements IWorkbenchPrefer
     private Button createCheckBox(final Composite group, final String label) {
         Button button = new Button(group, SWT.CHECK | SWT.LEFT);
         button.setText(label);
+        button.addSelectionListener(this);
         GridData data = new GridData();
         button.setLayoutData(data);
         return button;
@@ -68,60 +74,98 @@ public class SmartSelectPrefs extends PreferencePage implements IWorkbenchPrefer
         composite.setLayoutData(data);
         return composite;
     }
-    
-    @Override
-	protected IPreferenceStore doGetPreferenceStore() {
-		return Activator.getDefault().getPreferenceStore();
-	}
 
 	@Override
 	protected Control createContents(Composite parent) {
-		Composite composite_tab = createComposite(parent, 1);
-		Composite composite_checkBox = createComposite(composite_tab, 1);
-		smartSelectEnabledCheckBox = createCheckBox(composite_checkBox, "Use SmartSelect"); 
-		initializeValues();
+		Composite composite1 = createComposite(parent, 1);
+		Composite composite_checkBox = createComposite(composite1, 1);
+		smartSelectEnabledCheckBox = createCheckBox(composite_checkBox, "Use SmartSelector");
+		//
+		Composite composite2 = createComposite(parent, 2);
+		//
+		tabForward(composite2);
+		Composite composite_radioButton = createComposite(composite2, 1);
+		delayedSelectionRadioButton = createRadioButton(composite_radioButton, MessageUtil.getString("Delayed-Selection-Message-Button-Label")); 
+		realTimeSelectionRadioButton = createRadioButton(composite_radioButton, MessageUtil.getString("Real-Time-Selection-Message-Button-Label")); 
+		initialiseValues();
 		return new Composite(parent, SWT.NULL);
 	}
+
+    /**
+     * Utility method that creates a radio button instance
+     * and sets the default layout data.
+     *
+     * @param parent  the parent for the new button
+     * @param label  the label for the new button
+     * @return the newly-created button
+     */
+    private Button createRadioButton(Composite parent, String label) {
+        Button button = new Button(parent, SWT.RADIO | SWT.LEFT);
+        button.setText(label);
+        GridData data = new GridData();
+        button.setLayoutData(data);
+        return button;
+    }
+
+    /**
+     * Creates a tab of one horizontal spans.
+     *
+     * @param parent  the parent in which the tab should be created
+     */
+    private void tabForward(Composite parent) {
+        Label vfiller = new Label(parent, SWT.LEFT);
+        GridData gridData = new GridData();
+        gridData = new GridData();
+        gridData.horizontalAlignment = GridData.BEGINNING;
+        gridData.grabExcessHorizontalSpace = false;
+        gridData.verticalAlignment = GridData.CENTER;
+        gridData.grabExcessVerticalSpace = false;
+        vfiller.setLayoutData(gridData);
+    }
 	
-	private void initializeValues() {
-		IPreferenceStore store = getPreferenceStore();
-		if ("true".equals(store.getString(SmartSelector.PREF_STORE_INITIALISED))) {
-			smartSelectEnabledCheckBox.setSelection(store.getBoolean(SmartSelector.USE_SMART_SELECT_PREF));
-		} else {
-			smartSelectEnabledCheckBox.setSelection(store.getDefaultBoolean(SmartSelector.USE_SMART_SELECT_PREF));
-		}
+	private void initialiseValues() {
+		IEclipsePreferences store = Activator.getDefault().getEclipsePreferenceStore();
+		smartSelectEnabledCheckBox.setSelection(store.getBoolean(SmartSelector.USE_SMART_SELECT, SmartSelector.IS_SMART_SELECT_ENABLED_BY_DEFAULT));
+		delayedSelectionRadioButton.setSelection(store.getBoolean(SmartSelector.USE_DELAYED_SELECTION, SmartSelector.IS_DELAYED_SELECTION_ENABLED_BY_DEFAULT));
+		realTimeSelectionRadioButton.setSelection(!store.getBoolean(SmartSelector.USE_DELAYED_SELECTION, SmartSelector.IS_DELAYED_SELECTION_ENABLED_BY_DEFAULT));
+		realTimeSelectionRadioButton.setEnabled(smartSelectEnabledCheckBox.getSelection());
+		delayedSelectionRadioButton.setEnabled(smartSelectEnabledCheckBox.getSelection());
 	}
 
     @Override
 	protected void performDefaults() {
         super.performDefaults();
-        IPreferenceStore store = getPreferenceStore();
-        smartSelectEnabledCheckBox.setSelection(store.getDefaultBoolean(SmartSelector.USE_SMART_SELECT_PREF));
+        smartSelectEnabledCheckBox.setSelection(SmartSelector.IS_SMART_SELECT_ENABLED_BY_DEFAULT);
+        delayedSelectionRadioButton.setSelection(SmartSelector.IS_DELAYED_SELECTION_ENABLED_BY_DEFAULT);
+        realTimeSelectionRadioButton.setSelection(!SmartSelector.IS_DELAYED_SELECTION_ENABLED_BY_DEFAULT);
+        toggleRadioButtons();
     }
 
     @Override
 	public boolean performOk() {
-    	IPreferenceStore store = getPreferenceStore();
-    	store.setValue(SmartSelector.USE_SMART_SELECT_PREF, smartSelectEnabledCheckBox.getSelection());
-    	store.setValue(SmartSelector.PREF_STORE_INITIALISED, "true");
+    	IEclipsePreferences store = Activator.getDefault().getEclipsePreferenceStore();
+    	store.putBoolean(SmartSelector.USE_SMART_SELECT, smartSelectEnabledCheckBox.getSelection());
+    	store.putBoolean(SmartSelector.USE_DELAYED_SELECTION, delayedSelectionRadioButton.getSelection());
     	try {
     		// save updated prefs
-			InstanceScope.INSTANCE.getNode(Activator.PLUGIN_ID).flush();
+    		store.flush();
 		} catch (BackingStoreException bse) {
 			Activator.getDefault().getLog()
 				.log(new Status(IStatus.ERROR, Activator.PLUGIN_ID, 0, "Error persisting preferences for SmartSelector", bse));
 		}
-		final IWorkbench workbench = PlatformUI.getWorkbench();
+//		final IWorkbench workbench = PlatformUI.getWorkbench();
         if (smartSelectEnabledCheckBox.getSelection()) {
-            for (IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
-            	// add has no effect if listener already registered
-            	window.getSelectionService().addPostSelectionListener(Activator.SMART_SELECTION_LISTENER);
-            }
+        	Activator.getDefault().addListener();
+//            for (IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
+//            	// add has no effect if listener already registered
+//            	window.getSelectionService().addPostSelectionListener(Activator.SMART_SELECTION_LISTENER);
+//            }
         } else {
-            for (IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
-            	// remove has no effect if listener not already registered
-            	window.getSelectionService().removePostSelectionListener(Activator.SMART_SELECTION_LISTENER);
-            }
+        	Activator.getDefault().removeListener();
+//            for (IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
+//            	// remove has no effect if listener not already registered
+//            	window.getSelectionService().removePostSelectionListener(Activator.SMART_SELECTION_LISTENER);
+//            }
         }
         return true;
     }
@@ -129,5 +173,21 @@ public class SmartSelectPrefs extends PreferencePage implements IWorkbenchPrefer
 	@Override
 	public void init(IWorkbench arg0) {
 		// do nothing
+	}
+
+	@Override
+	public void widgetDefaultSelected(SelectionEvent selectionEvent) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	private void toggleRadioButtons() {
+		realTimeSelectionRadioButton.setEnabled(smartSelectEnabledCheckBox.getSelection());
+		delayedSelectionRadioButton.setEnabled(smartSelectEnabledCheckBox.getSelection());
+	}
+	
+	@Override
+	public void widgetSelected(SelectionEvent selectionEvent) {
+		toggleRadioButtons();
 	}
 }

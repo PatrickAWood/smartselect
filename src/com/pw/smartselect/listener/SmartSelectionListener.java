@@ -34,7 +34,7 @@ public class SmartSelectionListener implements ISelectionListener {
 	}};
 
 	public void selectionChanged(IWorkbenchPart sourcepart, ISelection selection) {
-		if (Activator.getDefault().getPreferenceStore().getBoolean(SmartSelector.USE_SMART_SELECT_PREF)) {
+		if (Activator.getDefault().getEclipsePreferenceStore().getBoolean(SmartSelector.USE_SMART_SELECT, true)) {
 			if (sourcepart instanceof ITextEditor) {
 				ITextEditor editor = (ITextEditor)sourcepart;
 				if (selection instanceof ITextSelection) {
